@@ -1,3 +1,6 @@
 # face_detector_main
 
-A new Flutter project.
+git clone https://github.com/FireantT/FlutterFaceDetection
+flutter packages get
+flutter pub get
+flutter run
