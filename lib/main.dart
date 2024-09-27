@@ -39,9 +39,15 @@ class CameraScreen extends StatefulWidget {
 class _CameraScreenState extends State<CameraScreen> {
   late CameraController _controller;
   late Future<void> _initializeControllerFuture;
-  final FaceDetector _faceDetector = FaceDetector(options: FaceDetectorOptions());
+  final FaceDetector _faceDetector = FaceDetector(
+    options: FaceDetectorOptions(
+      enableContours: true,
+      enableClassification: true, // Enable classification for smile detection
+    ),
+  );
   List<Face> _faces = [];
   bool _isDetecting = false;
+  bool _isFaceDetectionEnabled = true;
 
   @override
   void initState() {
@@ -54,7 +60,7 @@ class _CameraScreenState extends State<CameraScreen> {
 
     _initializeControllerFuture = _controller.initialize().then((_) {
       _controller.startImageStream((CameraImage image) {
-        if (!_isDetecting) {
+        if (_isFaceDetectionEnabled && !_isDetecting) {
           _isDetecting = true;
           detectFaces(image).then((_) {
             _isDetecting = false;
@@ -115,14 +121,32 @@ class _CameraScreenState extends State<CameraScreen> {
         });
       }
     } catch (e) {
-      print('Error detecting faces: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error detecting faces: $e')),
+        );
+      }
     }
+  }
+
+  void _toggleFaceDetection() {
+    setState(() {
+      _isFaceDetectionEnabled = !_isFaceDetectionEnabled;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Real-Time Face Detection')),
+      appBar: AppBar(
+        title: const Text('Real-Time Face Detection'),
+        actions: [
+          IconButton(
+            icon: Icon(_isFaceDetectionEnabled ? Icons.pause : Icons.play_arrow),
+            onPressed: _toggleFaceDetection,
+          ),
+        ],
+      ),
       body: FutureBuilder<void>(
         future: _initializeControllerFuture,
         builder: (context, snapshot) {
@@ -133,6 +157,14 @@ class _CameraScreenState extends State<CameraScreen> {
                 CameraPreview(_controller),
                 CustomPaint(
                   painter: FacePainter(_faces, _controller.value.previewSize!, _controller.value.aspectRatio),
+                ),
+                Positioned(
+                  bottom: 16,
+                  left: 16,
+                  child: Text(
+                    'Faces detected: ${_faces.length}',
+                    style: TextStyle(color: Colors.white, fontSize: 18),
+                  ),
                 ),
               ],
             );
@@ -167,6 +199,14 @@ class FacePainter extends CustomPainter {
         aspectRatio: aspectRatio,
       );
       canvas.drawRect(rect, paint);
+
+      if (face.smilingProbability != null && face.smilingProbability! > 0.5) {
+        final smilePaint = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.0
+          ..color = Colors.green;
+        canvas.drawRect(rect, smilePaint);
+      }
     }
   }
 
