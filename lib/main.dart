@@ -216,6 +216,7 @@ class FacePainter extends CustomPainter {
     required ui.Size widgetSize,
     required double aspectRatio,
   }) {
+    
     final double scaleX = widgetSize.width / imageSize.height;
     final double scaleY = widgetSize.height / imageSize.width;
 
